@@ -149,7 +149,7 @@ Horsti.AS.version = "1.0";
  * @value Left
  * @option Center
  * @value Center
- * @option Right (why??)
+ * @option Right
  * @value Right
  * @desc The align of the title text.
  * @default Center
@@ -195,13 +195,13 @@ Horsti.AS.version = "1.0";
  * @parent --- List Window ---
  * @type number
  * @desc The icon used for collapsed categories. 0 for none.
- * @default 414
+ * @default 160
  *
  * @param Expanded Icon
  * @parent --- List Window ---
  * @type number
  * @desc The icon used for expanded categories. 0 for none.
- * @default 415
+ * @default 160
  *
  * @param Concealed Achievement Vocab
  * @parent --- List Window ---
@@ -415,12 +415,12 @@ Horsti.AS.version = "1.0";
  * @param Alert Vocab Achievement Reward
  * @parent --- Alert Window ---
  * @desc Additional text shown when the completed tier or achievement gives a reward.
- * @default Got reward!
+ * @default Got Reward!
  *
  * @param Alert Vocab Point Reward
  * @parent --- Alert Window ---
  * @desc Additional text shown when the completed tier or achievement gives a reward.
- * @default Got reward!
+ * @default Got Reward!
  *
  * @param Time Visible
  * @parent --- Alert Window ---
@@ -465,7 +465,7 @@ Horsti.AS.version = "1.0";
  * Achievement System v1.0
  *-----------------------------------------------------------------------------
  * Author: Horst Onager
- * Created: 2020-07-18
+ * Created: 2020-07-23
  *
  * Copyright (c) 2020 Horst Onager
  *
@@ -1254,6 +1254,11 @@ Horsti.AS.version = "1.0";
  * @desc Achievement points rewarded for this tier.
  * @default 0
  *
+ * @param Eval
+ * @type note
+ * @desc Custom eval that is executed upon reaching this tier.
+ * @default ""
+ *
  */
 /*~struct~AchievementReward:
  *
@@ -1290,7 +1295,7 @@ Horsti.AS.version = "1.0";
  * @param Eval
  * @type note
  * @desc Custom eval that is executed upon receiving the reward.
- * @default
+ * @default ""
  *
  */
 /*~struct~AchievementPointReward:
@@ -1333,7 +1338,7 @@ Horsti.AS.version = "1.0";
  * @param Eval
  * @type note
  * @desc Custom eval that is executed upon receiving the reward.
- * @default
+ * @default ""
  *
  */
 /*~struct~ItemReward:
@@ -1492,16 +1497,7 @@ Horsti.AS.evalRewardCode = function(reward) {
 	if (!reward) return;
 	var code = reward.eval;
 	if (!code) return;
-	var party = $gameParty;
-	var v = $gameVariables._data;
-	var s = $gameSwitches._data;
-	try {
-		eval(code);
-	}
-	catch (e) {
-		console.error('Failed to execute custom reward eval:');
-		console.error(code);
-	}
+	Horsti.Utils.evalCode(code, 'Failed to execute custom reward eval.');
 };
 
 Horsti.AS.defaultAchievement = {
@@ -1573,8 +1569,10 @@ DataManager.loadAchievements = function() {
 		var tiers = Horsti.Utils.parseJson(tiersString);
 		if (!tiers) return Horsti.AS.defaultAchievement['tiers'];
 		tiers = tiers.map(function(tier) { return Horsti.Utils.parseJson(tier); });
+		tiers.forEach(function(tier) { tier['Eval'] = Horsti.Utils.parseJson(tier['Eval']); })
 		return tiers;
 	};
+	$dataAchievements = [undefined];
 	var achievements = Horsti.Utils.parseJson(Horsti.AS.Parameters['Achievement List']);
 	for (var i = 0; i < achievements.length; ++i) {
 		var data = Horsti.Utils.parseJson(achievements[i]);
@@ -1609,6 +1607,7 @@ DataManager.loadAchievementCategories = function() {
 		if (isNumber) return Number(value);
 		return value;
 	};
+	$dataAchievementCategories = [undefined];
 	var categories = Horsti.Utils.parseJson(Horsti.AS.Parameters['Category List']);
 	for (var i = 0; i < categories.length; ++i) {
 		var data = Horsti.Utils.parseJson(categories[i]);
@@ -1626,6 +1625,7 @@ DataManager.loadAchievementCategories = function() {
 };
 
 DataManager.loadAchievementRewards = function() {
+	$dataAchievementRewards = [undefined];
 	if (!Horsti.AS.Parameters['Reward List']) return;
 	var rewards = Horsti.Utils.parseJson(Horsti.AS.Parameters['Reward List']);
 	if (!rewards) return;
@@ -1685,9 +1685,17 @@ Game_System.prototype.achievementsVisible = function() {
 	return this._achievementsVisible;
 };
 
+Game_System.prototype.setAchievementVisibility = function(value) {
+	this._achievementsVisible = value;
+};
+
 Game_System.prototype.achievementsEnabled = function() {
 	if (this._achievementsEnabled === undefined) this._achievementsEnabled = Horsti.AS.commandEnabled;
 	return this._achievementsEnabled;
+};
+
+Game_System.prototype.setAchievementAvailability = function(value) {
+	this._achievementsEnabled = value;
 };
 
 Game_System.prototype.achievementAlertsEnabled = function() {
@@ -1695,9 +1703,17 @@ Game_System.prototype.achievementAlertsEnabled = function() {
 	return this._achievementAlertsEnabled;
 };
 
+Game_System.prototype.setAchievementAlertAvailability = function(value) {
+	this._achievementAlertsEnabled = value;
+};
+
 Game_System.prototype.achievementProgressAlertsEnabled = function() {
 	if (this._achievementProgressAlertsEnabled === undefined) this._achievementProgressAlertsEnabled = Horsti.AS.showAlertProgress;
 	return this._achievementProgressAlertsEnabled;
+};
+
+Game_System.prototype.setAchievementProgressAlertAvailability = function(value) {
+	this._achievementProgressAlertsEnabled = value;
 };
 
 Game_System.prototype.achievementPointRewardAlertsEnabled = function() {
@@ -1705,38 +1721,22 @@ Game_System.prototype.achievementPointRewardAlertsEnabled = function() {
 	return this._achievementPointRewardAlertsEnabled;
 };
 
+Game_System.prototype.setAchievementPointRewardAlertAvailability = function(value) {
+	this._achievementPointRewardAlertsEnabled = value;
+};
+
 Game_System.prototype.getProgressMode = function() {
 	if (this._progressMode === undefined) this._progressMode = Horsti.AS.progressMode;
 	return this._progressMode;
 };
 
+Game_System.prototype.setProgressMode = function(value) {
+	this._progressMode = value;
+};
+
 Game_System.prototype.silentAchievementCompletionEnabled = function() {
 	if (this._silentAchievementCompletion === undefined) this._silentAchievementCompletion = Horsti.AS.silentCompletion;
 	return this._silentAchievementCompletion;
-};
-
-Game_System.prototype.setAchievementVisibility = function(value) {
-	this._achievementsVisible = value;
-};
-
-Game_System.prototype.setAchievementAvailability = function(value) {
-	this._achievementsEnabled = value;
-};
-
-Game_System.prototype.setAchievementAlertAvailability = function(value) {
-	this._achievementAlertsEnabled = value;
-};
-
-Game_System.prototype.setAchievementProgressAlertAvailability = function(value) {
-	this._achievementProgressAlertsEnabled = value;
-};
-
-Game_System.prototype.setAchievementPointRewardAlertAvailability = function(value) {
-	this._achievementPointRewardAlertsEnabled = value;
-};
-
-Game_System.prototype.setProgressMode = function(value) {
-	this._progressMode = value;
 };
 
 Game_System.prototype.setSilentAchievementCompletion = function(value) {
@@ -2028,6 +2028,7 @@ function Game_Achievement() {
 
 Game_Achievement.prototype.initialize = function(index) {
 	this._index           = index;
+	this._description     = this.data().description;
 	this._concealed       = this.data().concealed;
 	this._visible         = this.data().visible;
 	this._categories      = Horsti.Utils.deepCopy(this.data().categories);
@@ -2051,10 +2052,13 @@ Game_Achievement.prototype.getCompletedTitle = function() {
 };
 
 Game_Achievement.prototype.getDescription = function() {
-	var description = this.data().description;
 	var tierGoal = this.getCurrentTierGoal();
 	var maxTierGoal = this.getMaxTierGoal();
-	return description.format(tierGoal, maxTierGoal);
+	return this._description.format(tierGoal, maxTierGoal);
+};
+
+Game_Achievement.prototype.setDescription = function(text) {
+	this._description = text;
 };
 
 Game_Achievement.prototype.isVisible = function() {
@@ -2245,7 +2249,7 @@ Game_Achievement.prototype.checkCompletion = function() {
 	while (this._progress >= this.getCurrentTierGoal()) {
 		this._tier++;
 		if (this._tier >= this.getTiers().length) {
-			if (!(this._repeated <= Number.MAX_SAFE_INTEGER)) continue;
+			if (this._repeated >= Number.MAX_SAFE_INTEGER) continue; // 
 			this._repeated++;
 			if (this._repeated < this.getAmountRepeatable() || this.getAmountRepeatable() === 0) {
 				this.completeRepeatable();
@@ -2265,11 +2269,15 @@ Game_Achievement.prototype.checkCompletion = function() {
 
 Game_Achievement.prototype.completeCurrentTier = function() {
 	$gameParty.pushAchievementAlert(this._index, 'progress', false);
-	var points = Number(this.getTier(this._tier - 1)['Points']);
+	var tier = this.getTier(this._tier - 1);
+	var points = Number(tier['Points']);
 	if (this.getMaxPoints() > 0) 
 		points = Math.min(points, this.getMaxPoints() - this.getRewardedPoints());
 	this._rewardedPoints += points;
 	$gameParty.achievements().gainPoints(points);
+	var code = tier['Eval'];
+	if (!code) return;
+	Horsti.Utils.evalCode(code, 'Failed to execute custom code for tier ' + this._tier + ' of achievement ' + this._index + '.');
 };
 
 Game_Achievement.prototype.completeRepeatable = function() {
@@ -2356,6 +2364,7 @@ function Game_AchievementCategory() {
 
 Game_AchievementCategory.prototype.initialize = function(index) {
 	this._index = index;
+	this._description = this.data().description;
 	this._expanded = false;
 	this._concealed = this.data().concealed;
 	this._visible = this.data().visible;
@@ -2371,7 +2380,11 @@ Game_AchievementCategory.prototype.getTitle = function() {
 };
 
 Game_AchievementCategory.prototype.getDescription = function() {
-	return this.data().description;
+	return this._description;
+};
+
+Game_AchievementCategory.prototype.setDescription = function(text) {
+	this._description = text;
 };
 
 Game_AchievementCategory.prototype.isVisible = function() {
@@ -2919,16 +2932,16 @@ Window_AchievementData.prototype.updateItem = function() {
 
 Window_AchievementData.prototype.updateKeyboardScrolling = function() {
 	if (Input.isPressed('up')){
-		this.scrollUp(this.scrollSpeed());
+		this.scrollUp(false);
 	}
 	else if (Input.isPressed('down')){
-		this.scrollDown(this.scrollSpeed());
+		this.scrollDown(false);
 	}
 	else if (Input.isPressed('pageup')){
-		this.scrollUp(this.scrollSpeedFast());
+		this.scrollUp(true);
 	}
 	else if (Input.isPressed('pagedown')){
-		this.scrollDown(this.scrollSpeedFast());
+		this.scrollDown(true);
 	}
 };
 
@@ -3116,21 +3129,13 @@ Window_AchievementData.prototype.currentHeight = function() {
 	return this._currentHeight;
 };
 
-Window_AchievementData.prototype.scrollSpeed = function() {
-	return 4;
-};
-
-Window_AchievementData.prototype.scrollSpeedFast = function() {
-	return this.scrollSpeed() * 4;
-};
-
-Window_AchievementData.prototype.scrollDown = function(speed) {
+Window_AchievementData.prototype.scrollDown = function(fast) {
 	var maximum = this.contentsHeight() - this.windowHeight() + this.standardPadding() * 2;
-	this.origin.y = Math.min(maximum, this.origin.y + speed);
+	this.origin.y = Math.min(maximum, this.origin.y + (fast ? 16 : 4));
 };
 
-Window_AchievementData.prototype.scrollUp = function(speed) {
-	this.origin.y = Math.max(0, this.origin.y - speed);
+Window_AchievementData.prototype.scrollUp = function(fast) {
+	this.origin.y = Math.max(0, this.origin.y - (fast ? 16 : 4));
 };
 
 Window_AchievementData.prototype.hideArrows = function() {
@@ -3142,10 +3147,10 @@ Window_AchievementData.prototype.processWheel = function() {
 	if (!this.isOpenAndActive()) return;
 	var threshold = 20;
 	if (TouchInput.wheelY >= threshold) {
-		this.scrollDown(this.scrollSpeedFast());
+		this.scrollDown(true);
 	}
 	if (TouchInput.wheelY <= -threshold) {
-		this.scrollUp(this.scrollSpeedFast());
+		this.scrollUp(true);
 	}
 };
 
@@ -3710,6 +3715,20 @@ Horsti.Utils.makeString = function(array) {
 	var string = '';
 	for (var i = 0; i < array.length; i++) string += (array[i] + ' ');
 	return string.trim();
+};
+
+Horsti.Utils.evalCode = function(code, errorMsg) {
+	var party = $gameParty;
+	var v = $gameVariables._data;
+	var s = $gameSwitches._data;
+	try {
+		eval(code);
+	}
+	catch (e) {
+		console.error(errorMsg);
+		console.error(code);
+		console.error(e.stack());
+	}
 };
 
 //=============================================================================
