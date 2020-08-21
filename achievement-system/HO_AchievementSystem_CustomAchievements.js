@@ -38,6 +38,14 @@
  * @desc ID of the current gold achievement.
  * @default 0
  *
+ * @param Display Max?
+ * @parent Current Gold
+ * @type boolean
+ * @on Yes
+ * @off No
+ * @desc Display the maximum current gold the player ever had or the just the current amount?
+ * @default true
+ *
  * @param Max Level
  * @type number
  * @desc ID of the Max Level achievement.
@@ -46,6 +54,11 @@
  * @param Max Buff
  * @type number
  * @desc ID of the Max Buff achievement.
+ * @default 0
+ *
+ * @param Max Damage
+ * @type number
+ * @desc ID of the Max Damage achievement.
  * @default 0
  *
  * @help
@@ -108,6 +121,11 @@
  * and so on. You can set any amount of tiers with arbitrary tier
  * goals, and the achievement can be repeatable.
  *
+ * Max Damage
+ * This achievement is awarded when the player manages to deal a
+ * defined amount of damage in a single hit. The achievement can
+ * have any amount of tiers, but should not be repeatable.
+ *
  */
 
 if (Imported.HO_AchievementSystem) {
@@ -121,8 +139,10 @@ Horsti.AS.Ext1.playtimeUnit = Number(Horsti.Parameters['Playtime Unit']);
 Horsti.AS.Ext1.steps = Number(Horsti.Parameters['Steps']);
 Horsti.AS.Ext1.totalGold = Number(Horsti.Parameters['Total Gold']);
 Horsti.AS.Ext1.currentGold = Number(Horsti.Parameters['Current Gold']);
+Horsti.AS.Ext1.displayMax = (Horsti.Parameters['Display Max?'] === 'true');
 Horsti.AS.Ext1.maxLevel = Number(Horsti.Parameters['Max Level']);
 Horsti.AS.Ext1.maxBuff = Number(Horsti.Parameters['Max Buff']);
+Horsti.AS.Ext1.maxDamage = Number(Horsti.Parameters['Max Damage']);
 
 //=============================================================================
 // Playtime
@@ -167,10 +187,10 @@ Game_Party.prototype.increaseSteps = function() {
 }
 
 //=============================================================================
-// Total Gold + Current Gold
+// Total Gold
 //=============================================================================
 
-if (Horsti.AS.Ext1.totalGold > 0 || Horsti.AS.Ext1.currentGold > 0) {
+if (Horsti.AS.Ext1.totalGold > 0) {
 
 Horsti.AS.Ext1.Game_Party_initialize = Game_Party.prototype.initialize;
 Game_Party.prototype.initialize = function() {
@@ -183,19 +203,37 @@ Game_Party.prototype.goldTotal = function() {
 	return this._goldTotal;
 };
 
-Horsti.AS.Ext1.Game_Party_gainGold = Game_Party.prototype.gainGold;
+Horsti.AS.Ext1.Game_Party_gainGold1 = Game_Party.prototype.gainGold;
 Game_Party.prototype.gainGold = function(amount) {
-	Horsti.AS.Ext1.Game_Party_gainGold.call(this, amount);
+	Horsti.AS.Ext1.Game_Party_gainGold1.call(this, amount);
 	if (amount > 0) {
 		this._goldTotal += amount;
-		var indexTotal = Horsti.AS.Ext1.totalGold;
+		var index = Horsti.AS.Ext1.totalGold;
 		if (index > 0 && this.achievement(index) !== undefined) {
 			this.achievement(index).addProgress(amount);
 		}
 	}
-	var indexCurrent = Horsti.AS.Ext1.currentGold;
-	if (index > 0 && this.achievement(indexCurrent) !== undefined) {
-		this.achievement(indexCurrent).setProgress(this.gold());
+};
+
+}
+
+//=============================================================================
+// Current Gold
+//=============================================================================
+
+if (Horsti.AS.Ext1.currentGold > 0) {
+
+Horsti.AS.Ext1.Game_Party_gainGold2 = Game_Party.prototype.gainGold;
+Game_Party.prototype.gainGold = function(amount) {
+	Horsti.AS.Ext1.Game_Party_gainGold2.call(this, amount);
+	var index = Horsti.AS.Ext1.currentGold;
+	if (index > 0 && this.achievement(index) !== undefined) {
+		var achievement = this.achievement(index);
+		if (Horsti.AS.Ext1.displayMax) {
+			var progress = Math.max(this.gold(), achievement.getProgress());
+			achievement.setProgress(progress);
+		}
+		else achievement.setProgress(this.gold());
 	}
 };
 
@@ -212,10 +250,8 @@ Game_Actor.prototype.levelUp = function() {
 	Horsti.AS.Ext1.Game_Actor_levelUp.call(this);
 	var achievement = $gameParty.achievement(Horsti.AS.Ext1.maxLevel);
 	if (achievement !== undefined) {
-		var maxLevel = Math.max.apply(null, $gameParty.members().map(function(actor) {
-			return actor.level;
-		}));
-		achievement.setProgress(maxLevel);
+		var difference = this.level - achievement.getProgress();
+		if (difference > 0) achievement.addProgress(difference);
 	}
 };
 
@@ -240,6 +276,25 @@ Game_Actor.prototype.addBuff = function(paramId) {
 			if (this.isMaxBuffAffected(i) && !previouslyMaxed[i]) {
 				achievement.addProgress(1);
 			}
+		}
+	}
+};
+
+}
+
+//=============================================================================
+// Max Damage
+//=============================================================================
+
+if (Horsti.AS.Ext1.maxDamage > 0) {
+
+Horsti.AS.Ext1.Game_Action_executeHpDamage = Game_Action.prototype.executeHpDamage;
+Game_Action.prototype.executeHpDamage = function(target, value) {
+	Horsti.AS.Ext1.Game_Action_executeHpDamage.call(this, target, value);
+	if (this.subject().isActor()) {
+		var achievement = $gameParty.achievement(Horsti.AS.Ext1.maxDamage);
+		if (achievement && value > achievement.getProgress()) {
+			achievement.addProgress(value - achievement.getProgress());
 		}
 	}
 };

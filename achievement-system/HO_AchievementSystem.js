@@ -14,29 +14,23 @@ Horsti.AS.version = "1.0";
  * @plugindesc v1.0 Achievement System for RPG Maker MV
  * @author Horst Onager
  * 
- * @param --- Achievements ---
+ * @param --- Data ---
  * @default
  * 
  * @param Achievement List
- * @parent --- Achievements ---
+ * @parent --- Data ---
  * @type struct<Achievement>[]
  * @desc List of all achievements.
  * @default []
  *
- * @param --- Categories ---
- * @default
- * 
  * @param Category List
- * @parent --- Categories ---
+ * @parent --- Data ---
  * @type struct<AchievementCategory>[]
  * @desc List of all achievement categories.
  * @default ["{\"Title\":\"All\",\"Description\":\"\\\"This is the \\\\\\\\c[4]default\\\\\\\\c[0] category\\\\ndescription.\\\"\",\"Visible\":\"true\"}","{\"Title\":\"Rewards\",\"Description\":\"\\\"Complete achievements and \\\\ngain achievement points to \\\\nget these rewards!\\\"\",\"Visible\":\"true\"}"]
  *
- * @param --- Achievement Point Rewards ---
- * @default
- *
  * @param Reward List
- * @parent --- Achievement Point Rewards ---
+ * @parent --- Data ---
  * @type struct<AchievementPointReward>[]
  * @desc List of rewards that will be rewarded for reaching
  * certain amounts of achievement points.
@@ -67,7 +61,13 @@ Horsti.AS.version = "1.0";
  * @on Distribute
  * @off Don't distribute
  * @desc Distribute rewards upon completion, or just show them in the menu?
- * @default false
+ * @default true
+ *
+ * @param Rewards Category Index
+ * @parent --- General ---
+ * @type number
+ * @desc Index of the rewards category. Set to 0 if you don't want to use this.
+ * @default 2
  *
  * @param Silent Completion
  * @parent --- General ---
@@ -195,13 +195,13 @@ Horsti.AS.version = "1.0";
  * @parent --- List Window ---
  * @type number
  * @desc The icon used for collapsed categories. 0 for none.
- * @default 160
+ * @default 187
  *
  * @param Expanded Icon
  * @parent --- List Window ---
  * @type number
  * @desc The icon used for expanded categories. 0 for none.
- * @default 160
+ * @default 189
  *
  * @param Concealed Achievement Vocab
  * @parent --- List Window ---
@@ -218,12 +218,6 @@ Horsti.AS.version = "1.0";
  * @type number
  * @desc Amount of pixels achievements will be indented in the list.
  * @default 8
- *
- * @param Rewards Category Index
- * @parent --- List Window ---
- * @type number
- * @desc Index of the rewards category. Set to 0 if you don't want to use this.
- * @default 2
  *
  * @param Point Rewards Format
  * @parent --- List Window ---
@@ -292,7 +286,7 @@ Horsti.AS.version = "1.0";
  *
  * @param Point Vocab Total
  * @parent --- Data Window ---
- * @desc Text that's displayed when total points amount is NOT unlimited. %1 Rewarded Points, %2: Total Points
+ * @desc Text that's displayed when total points amount is limited. %1 Rewarded Points, %2: Total Points
  * @default %1/%2\i[163]
  *
  * @param Point Vocab Infinite
@@ -580,8 +574,10 @@ Horsti.AS.version = "1.0";
  *=============================================================================
  *
  * In addition to the plugin commands, there are also some script calls you
- * can use for more granular control over the achievements. You could also
- * incorporate these into YEP_OptionsCore for the player to freely toggle them.
+ * can use for more granular control over the achievements and the plugin
+ * behaviour mid game. You could also incorporate these into YEP_OptionsCore
+ * for the player to freely toggle them.
+ *
  *
  *   $gameSystem.setAchievementProgressAlertAvailability(true/false);
  *   Enable or disable achievement alerts specifically for reaching a new
@@ -599,6 +595,14 @@ Horsti.AS.version = "1.0";
  *   0: Current Total
  *   1: Current Tier
  *   2: Total
+ *
+ *   $gameParty.achievement(x)
+ *   Returns the achievement with index x. From there, you can edit some of
+ *   its attributes, if you're familiar with JS.
+ *
+ *   $gameParty.achievementCategory(x)
+ *   Returns the category with index x. From there, you can edit some of
+ *   its attributes, if you're familiar with JS.
  *
  *
  *=============================================================================
@@ -699,7 +703,7 @@ Horsti.AS.version = "1.0";
  * orders the achievements by their index, with completed achievements
  * being towards the end of the list. This is an eval, so you can put
  * anything in there that evaluates to a number.
- * Default: 1 + (this.isCompleted() ? 99999 : 0)
+ * Default: this._index + (this.isCompleted() ? 99999 : 0)
  *
  *
  * Categories
@@ -787,6 +791,12 @@ Horsti.AS.version = "1.0";
  * point rewards should actually be distributed upon their completion.
  * If you set this to false, the specified rewards will just be shown
  * in the menu, but not be automatically distributed.
+ *
+ * Rewards Category Index
+ * The index of the rewards category. All possible achievement point rewards
+ * will be added to this category for the player to see them.. Set to 0 if
+ * you don't want to use this.
+ * Default: 2
  *
  * Silent Completion
  * If you turn this on, achievements will not automatically be revealed or
@@ -918,12 +928,6 @@ Horsti.AS.version = "1.0";
  * Achievements will be indented by this many pixels to the right in the 
  * achievement list.
  * Default: 8
- *
- * Rewards Category Index
- * The index of the rewards category. All possible achievement point rewards
- * will be added to this category for the player to see. Set to 0 if you don't
- * want to use this.
- * Default: 2
  *
  * Point Rewards Format
  * If you're using the Rewards Category, this is the title by which the
@@ -1208,7 +1212,6 @@ Horsti.AS.version = "1.0";
  * @default 0
  *
  * @param Sort Value
- * @type struct<AchievementReward>
  * @desc Sort value of this achievement. This is an eval. Higher means further down in the list.
  * @default 1 + (this.isCompleted() ? 99999 : 0)
  *
@@ -1256,7 +1259,7 @@ Horsti.AS.version = "1.0";
  *
  * @param Eval
  * @type note
- * @desc Custom eval that is executed upon reaching this tier.
+ * @desc Custom eval that is executed upon completion of this tier.
  * @default ""
  *
  */
@@ -1302,6 +1305,7 @@ Horsti.AS.version = "1.0";
  *
  * @param Points
  * @type number
+ * @min 1
  * @desc Amount of achievement points required for this reward.
  * @default 1 
  *
@@ -1398,6 +1402,7 @@ Horsti.AS.Parameters = PluginManager.parameters("HO_AchievementSystem");
 Horsti.AS.usePoints = (Horsti.AS.Parameters["Achievement Points"] === "true");
 Horsti.AS.useRewards = (Horsti.AS.Parameters["Achievement Rewards"] === "true");
 Horsti.AS.distributeRewards = (Horsti.AS.Parameters["Reward Distribution"] === "true");
+Horsti.AS.rewardsCategory = Number(Horsti.AS.Parameters["Rewards Category Index"]);
 Horsti.AS.silentCompletion = (Horsti.AS.Parameters["Silent Completion"] === "true");
 
 Horsti.AS.commandName = String(Horsti.AS.Parameters["Command Name"]);
@@ -1424,7 +1429,6 @@ Horsti.AS.concealedCategory = Horsti.AS.Parameters["Concealed Category Vocab"];
 Horsti.AS.iconExpanded = Number(Horsti.AS.Parameters["Expanded Icon"]);
 Horsti.AS.iconCollapsed = Number(Horsti.AS.Parameters["Collapsed Icon"]);
 Horsti.AS.achievementIndent = Number(Horsti.AS.Parameters["Achievement Indent"]);
-Horsti.AS.rewardsCategory = Number(Horsti.AS.Parameters["Rewards Category Index"]);
 Horsti.AS.pointRewardsFormat = String(Horsti.AS.Parameters["Point Rewards Format"]);
 Horsti.AS.pointRewardsCompletedFormat = String(Horsti.AS.Parameters["Point Rewards Completed Format"]);
 
@@ -1569,7 +1573,7 @@ DataManager.loadAchievements = function() {
 		var tiers = Horsti.Utils.parseJson(tiersString);
 		if (!tiers) return Horsti.AS.defaultAchievement['tiers'];
 		tiers = tiers.map(function(tier) { return Horsti.Utils.parseJson(tier); });
-		tiers.forEach(function(tier) { tier['Eval'] = Horsti.Utils.parseJson(tier['Eval']); })
+		tiers.forEach(function(tier) { tier['Eval'] = Horsti.Utils.parseJson(tier['Eval']); });
 		return tiers;
 	};
 	$dataAchievements = [undefined];
@@ -1777,6 +1781,7 @@ Game_Party.prototype.achievementCategory = function(index) {
 Game_Party.prototype.pushAchievementAlert = function(index, mode, reward) {
 	// mode can be 'completion', 'progress' or 'reward'
 	if (!$gameSystem.achievementAlertsEnabled()) return;
+	if (mode === 'reward' && !$gameSystem.achievementPointRewardAlertsEnabled()) return;
 	if (mode !== 'reward' && (!this.achievement(index).isVisible() || this.achievement(index).isConcealed())) return;
 	if (mode === 'progress' && !$gameSystem.achievementProgressAlertsEnabled()) return;
 	this.achievements().alerts().push({
@@ -1946,11 +1951,11 @@ Game_Achievements.prototype.reward = function(index) {
 };
 
 Game_Achievements.prototype.isRewardsCategory = function(category) {
-	if (typeof category === 'string') {
+	if (!Number(category) && typeof category === 'string') {
 		categoryIndex = $gameParty.achievements().categoryByTitle(category)._index;
 		return categoryIndex === Horsti.AS.rewardsCategory;
 	}
-	else if (typeof category === 'number') {
+	else if (Number(category) || typeof category === 'number') {
 		return category === Horsti.AS.rewardsCategory;
 	}
 	return false;
@@ -2028,7 +2033,6 @@ function Game_Achievement() {
 
 Game_Achievement.prototype.initialize = function(index) {
 	this._index           = index;
-	this._description     = this.data().description;
 	this._concealed       = this.data().concealed;
 	this._visible         = this.data().visible;
 	this._categories      = Horsti.Utils.deepCopy(this.data().categories);
@@ -2052,13 +2056,10 @@ Game_Achievement.prototype.getCompletedTitle = function() {
 };
 
 Game_Achievement.prototype.getDescription = function() {
+	var description = this.data().description;
 	var tierGoal = this.getCurrentTierGoal();
 	var maxTierGoal = this.getMaxTierGoal();
-	return this._description.format(tierGoal, maxTierGoal);
-};
-
-Game_Achievement.prototype.setDescription = function(text) {
-	this._description = text;
+	return description.format(tierGoal, maxTierGoal);
 };
 
 Game_Achievement.prototype.isVisible = function() {
@@ -2129,6 +2130,10 @@ Game_Achievement.prototype.isRepeatable = function() {
 
 Game_Achievement.prototype.getMaxPoints = function() {
 	return this.data().maxPoints;
+};
+
+Game_Achievement.prototype.hasPointLimit = function() {
+	return this.getMaxPoints() > 0;
 };
 
 Game_Achievement.prototype.getTotalTierPoints = function() {
@@ -2202,24 +2207,26 @@ Game_Achievement.prototype.addCategory = function(category) {
 };
 
 Game_Achievement.prototype.setCategories = function(categories) {
-	if (typeof categories === 'string' && $gameParty.achievements().isRewardsCategory(categories)) 
+	if (!Number(categories) && typeof categories === 'string') {
 		this._categories = [categories];
-	else if (typeof categories === 'number' && $gameParty.achievements().isRewardsCategory(categories)) 
-		this._categories = $gameParty.achievementCategory(categories);
-	else {
-		this._categories = categories.filter(function(category) {
-			return !$gameParty.achievements().isRewardsCategory(category)
-		}).map(function(category) {
-			if (typeof category === 'number')
-				return $gameParty.achievementCategory(category);
-			else return category;
+	}
+	else if (Number(categories) || typeof categories === 'number') {
+		this._categories = [$gameParty.achievementCategory(categories).getTitle()];
+	}
+	else /* array */ {
+		this._categories = categories.map(function(category) {
+			if (Number(category) || typeof category === 'number')
+				return $gameParty.achievementCategory(category).getTitle();
+			return category;
+		}).filter(function(category) {
+			return !$gameParty.achievements().isRewardsCategory(category);
 		});
 	}
 	$gameParty.achievements().resetCategoryAchievements();
 };
 
 Game_Achievement.prototype.removeCategory = function(removedCategory) {
-	if (!!Number(removedCategory)) 
+	if (Number(removedCategory) || typeof removedCategory === 'number') 
 		removedCategory = $gameParty.achievementCategory(Number(removedCategory)).getTitle();
 	this._categories = this._categories.filter(function(category) {
 		return category !== removedCategory;
@@ -2268,10 +2275,14 @@ Game_Achievement.prototype.checkCompletion = function() {
 };
 
 Game_Achievement.prototype.completeCurrentTier = function() {
+	if (!$gameSystem.silentAchievementCompletionEnabled()) {
+		this.show();
+		this.reveal();
+	}
 	$gameParty.pushAchievementAlert(this._index, 'progress', false);
 	var tier = this.getTier(this._tier - 1);
 	var points = Number(tier['Points']);
-	if (this.getMaxPoints() > 0) 
+	if (this.hasPointLimit()) 
 		points = Math.min(points, this.getMaxPoints() - this.getRewardedPoints());
 	this._rewardedPoints += points;
 	$gameParty.achievements().gainPoints(points);
@@ -2286,7 +2297,7 @@ Game_Achievement.prototype.completeRepeatable = function() {
 	if (this.getRewardMode() === 0 || (this.getRewardMode() === 1 && this._repeated === 1)) {
 		reward = this.distributeAchievementReward();
 	}
-	if (!Horsti.AS.silentCompletion) {
+	if (!$gameSystem.silentAchievementCompletionEnabled()) {
 		this.show();
 		this.reveal();
 	}
@@ -2305,13 +2316,13 @@ Game_Achievement.prototype.complete = function() {
 	if (!(this.getRewardMode() === 1 && this.isRepeatable())) {
 		reward = this.distributeAchievementReward();
 	}
-	if (!Horsti.AS.silentCompletion) {
+	if (!$gameSystem.silentAchievementCompletionEnabled()) {
 		this.show();
 		this.reveal();
 	}
 	$gameParty.pushAchievementAlert(this._index, 'completion', reward);
 	var points = Number(this.getMaxTier()['Points']);
-	if (this.getMaxPoints() > 0) 
+	if (this.hasPointLimit()) 
 		points = Math.min(points, this.getMaxPoints() - this.getRewardedPoints());
 	this._rewardedPoints += points;
 	$gameParty.achievements().gainPoints(points);
@@ -2364,7 +2375,6 @@ function Game_AchievementCategory() {
 
 Game_AchievementCategory.prototype.initialize = function(index) {
 	this._index = index;
-	this._description = this.data().description;
 	this._expanded = false;
 	this._concealed = this.data().concealed;
 	this._visible = this.data().visible;
@@ -2380,11 +2390,7 @@ Game_AchievementCategory.prototype.getTitle = function() {
 };
 
 Game_AchievementCategory.prototype.getDescription = function() {
-	return this._description;
-};
-
-Game_AchievementCategory.prototype.setDescription = function(text) {
-	this._description = text;
+	return this.data().description;
 };
 
 Game_AchievementCategory.prototype.isVisible = function() {
@@ -2397,6 +2403,7 @@ Game_AchievementCategory.prototype.isConcealed = function() {
 
 Game_AchievementCategory.prototype.conceal = function() {
 	this._concealed = true;
+	this.setExpanded(false);
 };
 
 Game_AchievementCategory.prototype.reveal = function() {
@@ -2848,7 +2855,7 @@ Window_AchievementList.prototype.expand = function() {
 	}
 	if (item.isCategory()) {
 		if (item.isConcealed() && item.isExpanded()) {
-			this.setExpanded(false);
+			item.setExpanded(false);
 			this.refresh();
 		}
 		else if (!item.isConcealed()) {
@@ -2961,7 +2968,7 @@ Window_AchievementData.prototype.calcTextHeight = function(textState, all) {
 	for (var i = 0; i < maxLines; i++) {
 		var maxFontSize = this.contents.fontSize;
 		var regExp = /\x1b[\{\}]/g;
-		// find first char in line thats not \{ or \}
+		// find first char in line thats not \{ or \} (does not completely work)
 		var escapeRegex = /[^\x1b\{\}]/;
 		var escapeArray = escapeRegex.exec(lines[i]);
 		var firstNonEscapeChar = 0;
@@ -3262,7 +3269,7 @@ Window_AchievementData.prototype.drawPoints = function() {
 	var totalTierPoints = this._item.getTotalTierPoints();
 	var rewardedPoints = this._item.getRewardedPoints();
 	var textTotal = '';
-	if (this._item.getMaxPoints() > 0) {
+	if (this._item.hasPointLimit()) {
 		var totalPoints = this._item.getMaxPoints();
 		textTotal = Horsti.AS.pointVocabTotal.format(rewardedPoints, totalPoints);
 	}
@@ -3552,40 +3559,40 @@ Game_Interpreter.prototype.achievementCategory = function(key) {
 Horsti.AS.Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
 Game_Interpreter.prototype.pluginCommand = function(command, args) {
 	Horsti.AS.Game_Interpreter_pluginCommand.call(this, command, args);
-	if (command.match(/ACHIEVEMENT|ACHIEVEMENTS/i)) {
+	if (command.match(/ACHIEVEMENTS?/i)) {
 		var line = Horsti.Utils.makeString(args);
 
-		if (line.match(/ALERT|ALERTS\s+ENABLE|ENABLED/i)) {
+		if (line.match(/ALERTS?\s+ENABLED?/i)) {
 			$gameSystem.setAchievementAlertAvailability(true);
 		}
-		else if (line.match(/ALERT|ALERTS\s+DISABLE|DISABLED/i)) {
+		else if (line.match(/ALERTS?\s+DISABLED?/i)) {
 			$gameSystem.setAchievementAlertAvailability(false);
 		}
 
 		else if (line.match(/CATEGORY\s+(.)\s+SHOW/i)) {
 			var index = RegExp.$1;
-			if (index <= 0 || index >= $dataAchievementCategories.length) {
+			if (Number(index) && (index <= 0 || index >= $dataAchievementCategories.length)) {
 				console.error('Category %1 does not exist.'.format(index));
 			}
 			else this.achievementCategory(index).show();
 		}
 		else if (line.match(/CATEGORY\s+(.)\s+HIDE/i)) {
 			var index = RegExp.$1;
-			if (index <= 0 || index >= $dataAchievementCategories.length) {
+			if (Number(index) && (index <= 0 || index >= $dataAchievementCategories.length)) {
 				console.error('Category %1 does not exist.'.format(index));
 			}
-			else this.achievementCategory(index).show();
+			else this.achievementCategory(index).hide();
 		}
 		else if (line.match(/CATEGORY\s+(.)\s+REVEAL/i)) {
 			var index = Number(RegExp.$1);
-			if (index <= 0 || index >= $dataAchievementCategories.length) {
+			if (Number(index) && (index <= 0 || index >= $dataAchievementCategories.length)) {
 				console.error('Category with index %1 does not exist.'.format(index));
 			}
 			else this.achievementCategory(index).reveal();
 		}
 		else if (line.match(/CATEGORY\s+(.)\s+CONCEAL/i)) {
 			var index = Number(RegExp.$1);
-			if (index <= 0 || index >= $dataAchievementCategories.length) {
+			if (Number(index) && (index <= 0 || index >= $dataAchievementCategories.length)) {
 				console.error('Category with index %1 does not exist.'.format(index));
 			}
 			else this.achievementCategory(index).conceal();
@@ -3666,16 +3673,17 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
 		else if (line.match(/HIDE/i)) {
 			$gameSystem.setAchievementVisibility(false);
 		}
-		else if (line.match(/ENABLE/i)) {
+		else if (line.match(/ENABLED?/i)) {
 			$gameSystem.setAchievementAvailability(true);
 		}
-		else if (line.match(/DISABLE/i)) {
+		else if (line.match(/DISABLED?/i)) {
 			$gameSystem.setAchievementAvailability(false);
 		}
 
 		else if (line.match(/OPEN|SCENE|PUSH|CALL/i)) {
 			SceneManager.push(Scene_Achievements);
 		}
+		else {}
 	}
 };
 
