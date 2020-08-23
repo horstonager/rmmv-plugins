@@ -7,11 +7,11 @@ Imported.HO_AchievementSystem = true;
 
 var Horsti = Horsti || {};
 Horsti.AS = {};
-Horsti.AS.version = "1.0";
+Horsti.AS.version = "1.1";
 
 //=============================================================================
 /*:
- * @plugindesc v1.0 Achievement System for RPG Maker MV
+ * @plugindesc v1.1 Achievement System for RPG Maker MV
  * @author Horst Onager
  * 
  * @param --- Data ---
@@ -446,7 +446,7 @@ Horsti.AS.version = "1.0";
  *
  * @help
  *=============================================================================
- * Achievement System v1.0
+ * Achievement System v1.1
  *-----------------------------------------------------------------------------
  * Author: Horst Onager
  * Created: 2020-08-21
@@ -1130,7 +1130,8 @@ Horsti.AS.version = "1.0";
  *=============================================================================
  * Changelog
  *=============================================================================
- * 
+ *
+ * v1.1: Changed category icons to be text, fixed some plugin command bugs. 
  * v1.0: Finished Plugin.
  * 
  *=============================================================================
