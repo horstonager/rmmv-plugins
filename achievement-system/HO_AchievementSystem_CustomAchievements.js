@@ -61,6 +61,11 @@
  * @desc ID of the Max Damage achievement.
  * @default 0
  *
+ * @param Save Count
+ * @type number
+ * @desc ID of the Save Count achievement.
+ * @default 0
+ *
  * @help
  *=============================================================================
  * Disclaimer
@@ -126,6 +131,11 @@
  * defined amount of damage in a single hit. The achievement can
  * have any amount of tiers, but should not be repeatable.
  *
+ * Save Count
+ * This achievement is awarded for saving a certain amount of times.
+ * You can set any amount of tiers with arbitrary tier goals, and the
+ * achievement can be repeatable.
+ *
  */
 
 if (Imported.HO_AchievementSystem) {
@@ -143,6 +153,7 @@ Horsti.AS.Ext1.displayMax = (Horsti.Parameters['Display Max?'] === 'true');
 Horsti.AS.Ext1.maxLevel = Number(Horsti.Parameters['Max Level']);
 Horsti.AS.Ext1.maxBuff = Number(Horsti.Parameters['Max Buff']);
 Horsti.AS.Ext1.maxDamage = Number(Horsti.Parameters['Max Damage']);
+Horsti.AS.Ext1.saveCount = Number(Horsti.Parameters['Save Count']);
 
 //=============================================================================
 // Playtime
@@ -297,6 +308,20 @@ Game_Action.prototype.executeHpDamage = function(target, value) {
 			achievement.addProgress(value - achievement.getProgress());
 		}
 	}
+};
+
+}
+
+//=============================================================================
+// Save Count
+//=============================================================================
+
+if (Horsti.AS.Ext1.saveCount > 0) {
+
+Horsti.AS.Ext1.Game_System_onBeforeSave = Game_System.prototype.onBeforeSave;
+Game_System.prototype.onBeforeSave = function() {
+	Horsti.AS.Ext1.Game_System_onBeforeSave.call(this);
+	$gameParty.achievement(Horsti.AS.Ext1.saveCount).addProgress(1);
 };
 
 }

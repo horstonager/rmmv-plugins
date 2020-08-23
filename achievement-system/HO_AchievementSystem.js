@@ -183,25 +183,15 @@ Horsti.AS.version = "1.0";
  * @desc Y Position of the achievement list window.
  * @default this.fittingHeight(1)
  *
- * @param Use Category Icons?
+ * @param Collapsed Prefix
  * @parent --- List Window ---
- * @type boolean
- * @on Yes
- * @off No
- * @desc Use the icons for expanded/collapsed categories?
- * @default true
+ * @desc The text that is prepended to collapsed categories.
+ * @default \i[187]
  *
- * @param Collapsed Icon
+ * @param Expanded Prefix
  * @parent --- List Window ---
- * @type number
- * @desc The icon used for collapsed categories. 0 for none.
- * @default 187
- *
- * @param Expanded Icon
- * @parent --- List Window ---
- * @type number
- * @desc The icon used for expanded categories. 0 for none.
- * @default 189
+ * @desc The text that is prepended to expanded categories.
+ * @default \i[189]
  *
  * @param Concealed Achievement Vocab
  * @parent --- List Window ---
@@ -904,15 +894,17 @@ Horsti.AS.version = "1.0";
  * not change depending on the category's state.
  * Default: true
  *
- * Collapsed Icon
- * If you're using the category icons, this is the index of the icon used for
- * collapsed categories.
- * Default: 414
+ * Collapsed Prefix
+ * This is an extra bit of text that is prepended to collapsed categories.
+ * You can use this to show an arrow icon, a + sign or whatever else you can
+ * think of.
+ * Default: \i[187]
  *
- * Expanded Icon
- * If you're using the category icons, this is the index of the icon used for
- * collapsed categories.
- * Default: 415
+ * Expanded Prefix
+ * This is an extra bit of text that is prepended to expanded categories.
+ * You can use this to show an arrow icon, a - sign or whatever else you can
+ * think of.
+ * Default: \i[189]
  *
  * Concealed Achievement Vocab
  * This is the text that is displayed instead of an achievement's actual title
@@ -1162,7 +1154,7 @@ Horsti.AS.version = "1.0";
  * @param Tiers
  * @type struct<AchievementTier>[]
  * @desc Tiers for this achievement.
- * @default ["{\"Progress\":\"1\",\"Points\":\"0\"}"]
+ * @default ["{\"Progress\":\"1\",\"Points\":\"0\",\"Eval\":\"\\\"\\\"\"}"]
  *
  * @param Categories
  * @type text[]
@@ -1423,11 +1415,11 @@ Horsti.AS.listWidth = Horsti.AS.Parameters["List Width"];
 Horsti.AS.listHeight = Horsti.AS.Parameters["List Height"];
 Horsti.AS.listX = Horsti.AS.Parameters["List X"];
 Horsti.AS.listY = Horsti.AS.Parameters["List Y"];
-Horsti.AS.useCategoryIcons = (Horsti.AS.Parameters["Use Category Icons?"] === "true");
+//Horsti.AS.useCategoryIcons = (Horsti.AS.Parameters["Use Category Icons?"] === "true");
 Horsti.AS.concealedAchievement = Horsti.AS.Parameters["Concealed Achievement Vocab"];
 Horsti.AS.concealedCategory = Horsti.AS.Parameters["Concealed Category Vocab"];
-Horsti.AS.iconExpanded = Number(Horsti.AS.Parameters["Expanded Icon"]);
-Horsti.AS.iconCollapsed = Number(Horsti.AS.Parameters["Collapsed Icon"]);
+Horsti.AS.prefixCollapsed = String(Horsti.AS.Parameters["Collapsed Prefix"]);
+Horsti.AS.prefixExpanded = String(Horsti.AS.Parameters["Expanded Prefix"]);
 Horsti.AS.achievementIndent = Number(Horsti.AS.Parameters["Achievement Indent"]);
 Horsti.AS.pointRewardsFormat = String(Horsti.AS.Parameters["Point Rewards Format"]);
 Horsti.AS.pointRewardsCompletedFormat = String(Horsti.AS.Parameters["Point Rewards Completed Format"]);
@@ -1964,7 +1956,8 @@ Game_Achievements.prototype.isRewardsCategory = function(category) {
 Game_Achievements.prototype.categoryByTitle = function(title) {
 	if (!this._categoryMap[title]) {
 		var index = $dataAchievementCategories.map(function(category) {
-			return category.title;
+			if (category) return category.title;
+			else return undefined;
 		}).indexOf(title);
 		if (index > 0) this.resetAchievementCategory(index);
 	}
@@ -2234,7 +2227,7 @@ Game_Achievement.prototype.removeCategory = function(removedCategory) {
 	$gameParty.achievements().resetCategoryAchievements();
 };
 
-Game_Achievement.prototype.draw = function(window, index) {
+Game_Achievement.prototype.drawListTitle = function(window, index) {
 	var rect = window.itemRect(index);
 	rect.x += Horsti.AS.achievementIndent;
 	if (!this.isConcealed()) {
@@ -2438,19 +2431,16 @@ Game_AchievementCategory.prototype.addAchievement = function(achievement) {
 	this._achievements.push(achievement);
 };
 
-Game_AchievementCategory.prototype.draw = function(window, index) {
+Game_AchievementCategory.prototype.drawListTitle = function(window, index) {
 	var rect = window.itemRect(index);
-	if (Horsti.AS.useCategoryIcons) {
-		window.drawIcon(this.isExpanded() ? Horsti.AS.iconExpanded : Horsti.AS.iconCollapsed, rect.x, rect.y);
-		rect.x += Window_Base._iconWidth;
-		rect.width -= Window_Base._iconWidth;
-	}
+	var prefix = this.isExpanded() ? Horsti.AS.prefixExpanded : Horsti.AS.prefixCollapsed;
 	if (this.isConcealed()) {
-		var title = Horsti.AS.concealedCategory.format(this.getTitle());
+		var title = prefix + Horsti.AS.concealedCategory.format(this.getTitle());
 		window.drawTextEx(title, rect.x, rect.y);
 	}
 	else {
-		window.drawTextEx(this.getTitle(), rect.x, rect.y);
+		var title = prefix + this.getTitle();
+		window.drawTextEx(title, rect.x, rect.y);
 	}
 };
 
@@ -2504,7 +2494,7 @@ Game_AchievementPointReward.prototype.getReward = function() {
 	return this.data();
 };
 
-Game_AchievementPointReward.prototype.draw = function(window, index) {
+Game_AchievementPointReward.prototype.drawListTitle = function(window, index) {
 	var rect = window.itemRect(index);
 	rect.x += Horsti.AS.achievementIndent;
 	var title = this.isCompleted() ? this.getCompletedTitle() : this.getTitle();
@@ -2844,7 +2834,7 @@ Window_AchievementList.prototype.item = function() {
 
 Window_AchievementList.prototype.drawItem = function(index) {
 	var item = this._data[index];
-	if (!!item) item.draw(this, index);
+	if (!!item) item.drawListTitle(this, index);
 };
 
 Window_AchievementList.prototype.expand = function() {
@@ -3569,36 +3559,35 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
 			$gameSystem.setAchievementAlertAvailability(false);
 		}
 
-		else if (line.match(/CATEGORY\s+(.)\s+SHOW/i)) {
+		else if (line.match(/CATEGORY\s+(.+)\s+SHOW/i)) {
 			var index = RegExp.$1;
 			if (Number(index) && (index <= 0 || index >= $dataAchievementCategories.length)) {
 				console.error('Category %1 does not exist.'.format(index));
 			}
 			else this.achievementCategory(index).show();
 		}
-		else if (line.match(/CATEGORY\s+(.)\s+HIDE/i)) {
+		else if (line.match(/CATEGORY\s+(.+)\s+HIDE/i)) {
 			var index = RegExp.$1;
 			if (Number(index) && (index <= 0 || index >= $dataAchievementCategories.length)) {
 				console.error('Category %1 does not exist.'.format(index));
 			}
 			else this.achievementCategory(index).hide();
 		}
-		else if (line.match(/CATEGORY\s+(.)\s+REVEAL/i)) {
-			var index = Number(RegExp.$1);
+		else if (line.match(/CATEGORY\s+(.+)\s+REVEAL/i)) {
+			var index = RegExp.$1;
 			if (Number(index) && (index <= 0 || index >= $dataAchievementCategories.length)) {
 				console.error('Category with index %1 does not exist.'.format(index));
 			}
 			else this.achievementCategory(index).reveal();
 		}
-		else if (line.match(/CATEGORY\s+(.)\s+CONCEAL/i)) {
-			var index = Number(RegExp.$1);
+		else if (line.match(/CATEGORY\s+(.+)\s+CONCEAL/i)) {
+			var index = RegExp.$1;
 			if (Number(index) && (index <= 0 || index >= $dataAchievementCategories.length)) {
 				console.error('Category with index %1 does not exist.'.format(index));
 			}
 			else this.achievementCategory(index).conceal();
 		}
 
-		
 		else if (line.match(/(\d+)\s+ADD\s+(-?\d+)\s+PROGRESS/i)) {
 			var index = Number(RegExp.$1);
 			if (index <= 0 || index >= $dataAchievements.length) {
@@ -3614,28 +3603,26 @@ Game_Interpreter.prototype.pluginCommand = function(command, args) {
 			else this.achievement(index).setProgress(Number(RegExp.$2));
 		}
 
-		else if (line.match(/(\d+)\s+ADD\s+CATEGORY\s+(.)/i)) {
+		else if (line.match(/(\d+)\s+ADD\s+CATEGORY\s+(.+)/i)) {
 			var index = Number(RegExp.$1);
 			if (index <= 0 || index >= $dataAchievements.length) {
 				console.error('Achievement with index %1 does not exist.'.format(index));
 			}
 			else this.achievement(index).addCategory(RegExp.$2);
 		}
-		else if (line.match(/(\d+)\s+SET\s+CATEGORY\s+(.)/i)) {
+		else if (line.match(/(\d+)\s+SET\s+CATEGORY\s+(.+)/i)) {
 			var index = Number(RegExp.$1);
 			if (index <= 0 || index >= $dataAchievements.length) {
 				console.error('Achievement with index %1 does not exist.'.format(index));
 			}
 			else this.achievement(index).setCategories(RegExp.$2);
 		}
-		else if (line.match(/(\d+)\s+REMOVE\s+CATEGORY\s+(.)/i)) {
+		else if (line.match(/(\d+)\s+REMOVE\s+CATEGORY\s+(.+)/i)) {
 			var index = Number(RegExp.$1);
 			if (index <= 0 || index >= $dataAchievements.length) {
 				console.error('Achievement with index %1 does not exist.'.format(index));
 			}
-			else {
-				this.achievement(index).removeCategory(RegExp.$2);
-			}
+			else this.achievement(index).removeCategory(RegExp.$2);
 		}
 
 		else if (line.match(/(\d+)\s+SHOW/i)) {
